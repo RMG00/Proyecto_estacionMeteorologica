@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Streaming y datos de la tabla</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f8fb;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #stream {
+            position: relative;
+            width: calc(100% - 20px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            max-height: 70vh;
+            overflow: hidden;
+            background-color: #e2f3ff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin: 10px;
+            max-width: 800px; /* Establece el tamaño máximo del contenedor de transmisión */
+        }
+
+        #stream img {
+            width: 100%; /* La imagen se ajustará al ancho del contenedor */
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #fullscreen-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #007bff;
+            color: #fff;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        #graphs-button {
+            background-color: #28a745;
+            color: #fff;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #data-table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 60%;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #data-table th,
+        #data-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #e5e5e5;
+        }
+
+        #data-table th {
+            background-color: #f0f5ff;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="stream">
+            <img src="{{ url_for('stream') }}" alt="Stream">
+            <button id="fullscreen-button">Pantalla completa</button>
+        </div>
+
+        <button id="graphs-button" onclick="window.location.href='http://localhost:8080'">Gráficas</button>
+
+        <table id="data-table">
+            <thead>
+                <tr>
+                    <th>timestamp</th>
+                    <th>humedad (%)</th>
+                    <th>presion (hPa)</th>
+                    <th>temperatura (°C)</th>
+                    
+                </tr>
+            </thead>
+            <tbody id="data-body">
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var socket = io();
+            var streamContainer = document.getElementById('stream');
+            var fullscreenButton = document.getElementById('fullscreen-button');
+            var graphsButton = document.getElementById('graphs-button');
+
+            // Manejar la respuesta de datos
+            socket.on('data_response', function(data) {
+                var tableBody = document.getElementById('data-body');
+                tableBody.innerHTML = '';
+
+                data.forEach(function(row) {
+                    var newRow = document.createElement('tr');
+
+                    row.forEach(function(value, index) {
+                        var cell = document.createElement('td');
+                        if (index === 3) { // Columna de temperatura
+                            cell.textContent = value + ' °C';
+                        } else if (index === 1) { // Columna de humedad
+                            cell.textContent = value + ' %';
+                        } else if (index === 2) { // Columna de presion
+                            cell.textContent = value + ' hPa';
+                        } else {
+                            cell.textContent = value;
+                        }
+                        newRow.appendChild(cell);
+                    });
+
+                    tableBody.appendChild(newRow);
+                });
+            });
+
+            // Solicitar datos al cargar la página
+            socket.emit('request_data');
+
+            // Activar el modo de pantalla completa cuando se hace clic en el botón
+            fullscreenButton.addEventListener('click', function() {
+                if (!document.fullscreenElement &&
+                    !document.mozFullScreenElement &&
+                    !document.webkitFullscreenElement &&
+                    !document.msFullscreenElement) {
+
+                    if (streamContainer.requestFullscreen) {
+                        streamContainer.requestFullscreen();
+                    } else if (streamContainer.mozRequestFullScreen) {
+                        streamContainer.mozRequestFullScreen();
+                    } else if (streamContainer.webkitRequestFullscreen) {
+                        streamContainer.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+                    } else if (streamContainer.msRequestFullscreen) {
+                        streamContainer.msRequestFullscreen();
+                    }
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.mozCancelFullScreen) {
+                        document.mozCancelFullScreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
+                }
+            });
+
+            // Redirigir al hacer clic en el botón "Gráficas"
+            graphsButton.addEventListener('click', function() {
+                window.location.href = 'http://localhost:8080';
+            });
+        });
+    </script>
+</body>
+</html>

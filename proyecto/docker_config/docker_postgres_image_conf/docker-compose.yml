@@ -1,0 +1,31 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres
+    container_name: meteorologic_db
+    networks:
+      - red_proyecto
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - TZ=America/Santiago
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=1431
+      - POSTGRES_DB=meteorologic_db
+  sensores_python:
+    build:
+      context: ../docker_python_conf/
+      dockerfile: Dockerfile
+    volumes: 
+      - ../docker_python_conf/:/app
+    container_name: sensores
+    networks:
+      - red_proyecto   
+    depends_on:
+      - postgres
+    devices:
+      - "/dev/i2c-1:/dev/i2c-1"
+networks:
+  red_proyecto:
+    driver: bridge

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Datos</title>
+    <style>
+        body {
+            background-color: #f2f2f2;
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        #chartContainer {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        canvas {
+            width: 80%;
+            max-height: 400px;
+            margin-bottom: 20px;
+        }
+
+        #camaraButton {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #a9c0d9;
+            color: white;
+            border-radius: 10px;
+            padding: 10px 15px;
+            font-size: 16px;
+            text-align: center;
+            cursor: pointer;
+        }
+        
+        #buttonContainer {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .dataButton {
+            margin: 0 10px;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            background-color: #d1d9e6;
+            color: #333;
+            cursor: pointer;
+        }
+        
+        .dataButton.active {
+            background-color: #a9c0d9;
+            color: white;
+        }
+
+        .dataContainer {
+            width: 80%;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .dataBox {
+            flex: 1;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .temperaturaBox {
+            background-color: #fddede;
+            color: red;
+        }
+
+        .humedadBox {
+            background-color: #ddeeff;
+            color: blue;
+        }
+
+        .presionBox {
+            background-color: #d7f4d7;
+            color: green;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+</head>
+<body>
+    <div id="buttonContainer">
+        <button class="dataButton active" onclick="changeData('temperatura')">Temperatura</button>
+        <button class="dataButton" onclick="changeData('humedad')">Humedad</button>
+        <button class="dataButton" onclick="changeData('presion')">Presión</button>
+    </div>
+
+    <div id="chartContainer">
+        <canvas id="dataChart"></canvas>
+        <div class="dataContainer">
+            <div class="dataBox temperaturaBox" id="temperaturaBox"></div>
+            <div class="dataBox humedadBox" id="humedadBox"></div>
+            <div class="dataBox presionBox" id="presionBox"></div>
+        </div>
+    </div>
+
+    <div id="camaraButton" onclick="redireccionarCamara()">Cámara</div>
+
+    <script>
+        var dataChart = null;
+        var dataLabels = [];
+        var dataValues = [];
+        var dataColors = {
+            temperatura: 'red',
+            humedad: 'blue',
+            presion: 'green'
+        };
+
+        function createChart(dataType) {
+            if (dataChart) {
+                dataChart.destroy();
+            }
+
+            dataChart = new Chart(document.getElementById('dataChart'), {
+                type: 'line',
+                data: {
+                    labels: dataLabels.map(timestamp => moment(timestamp).format('YYYY-MM-DD HH:mm:ss')),
+                    datasets: [{
+                        label: dataType.charAt(0).toUpperCase() + dataType.slice(1),
+                        data: dataValues[dataType],
+                        borderColor: dataColors[dataType],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true
+                }
+            });
+        }
+
+        function actualizarDatos() {
+            $.ajax({
+                url: '/datos',
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    dataLabels = data.timestamp;
+                    dataValues = {
+                        temperatura: data.temperatura,
+                        humedad: data.humedad,
+                        presion: data.presion
+                    };
+
+                    if (dataChart) {
+                        dataChart.data.labels = dataLabels.map(timestamp => moment(timestamp).format('YYYY-MM-DD HH:mm:ss'));
+                        dataChart.data.datasets[0].data = dataValues[dataChart.data.datasets[0].label.toLowerCase()];
+                        dataChart.update();
+                    }
+
+                    // Actualizar los datos en los rectángulos
+                    document.getElementById('temperaturaBox').innerText = 'Temperatura: ' + data.temperatura[data.temperatura.length - 1];
+                    document.getElementById('humedadBox').innerText = 'Humedad: ' + data.humedad[data.humedad.length - 1];
+                    document.getElementById('presionBox').innerText = 'Presión: ' + data.presion[data.presion.length - 1];
+                }
+            });
+        }
+
+        function changeData(dataType) {
+            createChart(dataType);
+            $('.dataButton').removeClass('active');
+            $('#' + dataType + 'Button').addClass('active');
+        }
+
+        function redireccionarCamara() {
+            window.location.href = 'http://localhost:8000';
+        }
+
+        // Crear la gráfica inicial
+        createChart('temperatura');
+
+        // Actualizar los datos cada 5 segundos
+        setInterval(actualizarDatos, 5000);
+    </script>
+</body>
+</html>
